@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gerador de Cubagens — CargoCalc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #2a1027;
+    --bg-panel: #3a1836;
+    --bg-input: #21091f;
+    --line: #5c2c56;
+    --line-soft: rgba(232,115,74,0.08);
+    --text: #f5ece8;
+    --text-muted: #b494ae;
+    --orange: #e8734a;
+    --orange-dim: #6b3220;
+    --gold: #d4a64a;
+    --gold-dim: #5c451c;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/32px 32px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/32px 32px,
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    min-height:100vh;
+    padding:20px 14px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:460px;margin:0 auto;}
+
+  .brand{
+    display:flex; align-items:center; gap:12px; margin-bottom:18px;
+    padding:14px 16px; border-radius:var(--radius);
+    background: linear-gradient(120deg, #3d1339 0%, #4a1a3f 55%, #33122f 100%);
+    border:1px solid var(--line);
+    position:relative; overflow:hidden;
+  }
+  .brand::after{
+    content:''; position:absolute; top:0; right:0; width:130px; height:100%;
+    background: linear-gradient(135deg, #f2895f, var(--orange));
+    clip-path: polygon(100% 0, 100% 100%, 40% 100%, 58% 50%, 40% 0);
+  }
+  .brand-text{position:relative; z-index:1;}
+  .brand-name{font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; letter-spacing:-0.01em;}
+  .brand-name span{color:var(--orange);}
+  .brand-tag{font-size:10.5px; color:var(--gold); letter-spacing:.05em; margin-top:1px;}
+
+  header{margin-bottom:16px;}
+  .eyebrow{font-size:11px; letter-spacing:.16em; color:var(--orange); text-transform:uppercase; font-weight:600; margin-bottom:6px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; margin:0 0 4px; letter-spacing:-0.01em;}
+  .sub{color:var(--text-muted); font-size:13px; line-height:1.5;}
+
+  .card{background:var(--bg-panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:14px;}
+  .card-title{
+    font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.08em; margin:0 0 14px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .card-title .hint{font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-muted); opacity:.75;}
+
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  .field input{
+    width:100%; background:var(--bg-input); border:1px solid var(--line); border-radius:8px;
+    padding:11px 12px; color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:15px;
+    outline:none; transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--orange);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+  .chip{
+    border:1px solid var(--line); background:var(--bg-input); color:var(--text-muted);
+    border-radius:20px; padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:13px;
+    cursor:pointer; user-select:none; transition:.15s;
+  }
+  .chip small{display:block; font-size:9px; opacity:.75; margin-top:1px;}
+  .chip.active{background:rgba(232,115,74,0.18); border-color:var(--orange); color:var(--text);}
+  .chip.custom-active{background:rgba(212,166,74,0.16); border-color:var(--gold); color:var(--text);}
+  .custom-wrap{display:none; margin-top:2px;}
+  .custom-wrap.show{display:block;}
+
+  button.add{
+    width:100%; margin-top:6px; padding:13px; border-radius:10px; border:none;
+    background:var(--orange); color:#fff; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:14px; cursor:pointer; letter-spacing:.02em; transition:filter .15s;
+  }
+  button.add:hover{filter:brightness(1.08);}
+  button.add:active{filter:brightness(0.92);}
+  button.secondary{background:transparent; border:1px solid var(--line); color:var(--text-muted);}
+
+  .result-empty{color:var(--text-muted); font-size:12.5px; text-align:center; padding:18px 0;}
+
+  .dims-display{
+    display:flex; justify-content:center; gap:18px; padding:18px 0 8px; flex-wrap:wrap;
+  }
+  .dims-display .dim{text-align:center;}
+  .dims-display .dim .v{font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:var(--orange);}
+  .dims-display .dim .u{font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em;}
+  .dims-x{font-family:'Space Grotesk',sans-serif; font-size:22px; color:var(--text-muted); align-self:center; margin-top:14px;}
+
+  .res-row{display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px dashed var(--line); font-size:13px; color:var(--text-muted);}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{
+    text-align:left; color:var(--text-muted); font-weight:500; font-size:10px;
+    text-transform:uppercase; letter-spacing:.04em; padding-bottom:8px; border-bottom:1px solid var(--line);
+  }
+  td{padding:9px 0; border-bottom:1px solid var(--line);}
+  td.num{font-family:'IBM Plex Mono',monospace;}
+  tr:last-child td{border-bottom:none;}
+
+  .fatores-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;}
+  .fatores-grid .result-empty{grid-column: 1 / -1;}
+  .fator-item{
+    text-align:center; padding:10px 6px; border:1px solid var(--line); border-radius:8px;
+    background:var(--bg-input);
+  }
+  .fator-item .fnum{font-size:11px; color:var(--text-muted);}
+  .fator-item .fnum b{color:var(--text); font-weight:600;}
+  .fator-item .fvalor{
+    display:block; margin-top:4px; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:14px; color:var(--text-muted);
+  }
+  .fator-item.selecionado{background:rgba(232,115,74,0.14); border-color:var(--orange);}
+  .fator-item.selecionado .fnum b, .fator-item.selecionado .fvalor{color:var(--orange);}
+  .fator-item.inativo{}
+  .fator-item.inativo .fnum b{color:var(--text);}
+  .fator-item .ftag{
+    display:block; font-size:8px; color:var(--orange); text-transform:uppercase;
+    letter-spacing:.04em; margin-top:3px;
+  }
+
+  .res-row:last-of-type{border-bottom:none;}
+  .res-row b{color:var(--text); font-size:14px; font-weight:500;}
+
+  .winner{
+    margin-top:14px; border-radius:10px;
+    background:linear-gradient(135deg, rgba(232,115,74,0.16), rgba(212,166,74,0.06));
+    border:1px solid var(--orange-dim); padding:16px;
+  }
+  .winner .label{font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px;}
+  .winner .value{font-size:26px; font-weight:600; letter-spacing:-0.02em;}
+  .winner .value span{font-size:14px; color:var(--text-muted); font-weight:400;}
+  .winner .note{font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.5;}
+
+  footer{text-align:center; color:var(--text-muted); font-size:10.5px; margin-top:20px; line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="brand-text">
+      <div class="brand-name">Cargo<span>Calc</span></div>
+      <div class="brand-tag">GERADOR DE CUBAGENS</div>
+    </div>
+  </div>
+
+  <header>
+    <div class="eyebrow">Ferramenta interna</div>
+    <h1>Gerador</h1>
+    <div class="sub">Informe o peso real e o peso cubado que você precisa bater — o sistema calcula três medidas diferentes entre si que geram exatamente esse resultado.</div>
+  </header>
+
+  <div class="card">
+    <div class="card-title">Dados de entrada</div>
+    <div class="grid2">
+      <div class="field">
+        <label>Peso real total (kg)</label>
+        <input type="number" id="pesoReal" placeholder="Ex: 30">
+      </div>
+      <div class="field">
+        <label>Peso cubado desejado (kg)</label>
+        <input type="number" id="pesoCubadoAlvo" placeholder="Ex: 80">
+      </div>
+    </div>
+    <div class="field">
+      <label>Quantidade de volumes da carga</label>
+      <input type="number" id="qtdVolumes" placeholder="Ex: 1" value="1">
+    </div>
+
+    <label style="display:block; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;">Fator de cubagem (kg/m³)</label>
+    <div class="chips" id="chips">
+      <div class="chip" data-fator="100">100<small>Fracionado</small></div>
+      <div class="chip active" data-fator="167">167<small>Aéreo</small></div>
+      <div class="chip" data-fator="200">200<small>Rodoviário alt.</small></div>
+      <div class="chip" data-fator="250">250<small>Rodoviário alt.</small></div>
+      <div class="chip" data-fator="300">300<small>Rodoviário</small></div>
+      <div class="chip" id="chipCustom">Outro<small>customizado</small></div>
+    </div>
+    <div class="custom-wrap" id="customWrap">
+      <div class="field" style="margin-bottom:0">
+        <label>Fator customizado (kg/m³)</label>
+        <input type="number" id="fatorCustom" placeholder="Ex: 220">
+      </div>
+    </div>
+
+    <button class="add" id="btnGerar">🎲 Gerar medidas</button>
+    <button class="add secondary" id="btnRegenerar" style="margin-top:8px;">↺ Gerar outra combinação</button>
+    <button class="add secondary" id="btnLimparTudo" style="margin-top:8px;">🗑️ Limpar tudo</button>
+  </div>
+
+  <!-- COMPARATIVO ENTRE TODOS OS FATORES - card fixo, sempre visível -->
+  <div class="card">
+    <div class="card-title">Peso cubado em cada fator <span class="hint">mesmo volume gerado</span></div>
+    <div id="comparativoFatoresBody" class="fatores-grid">
+      <div class="result-empty">Gere as medidas pra ver quanto essa carga pesaria cubada em cada fator.</div>
+    </div>
+  </div>
+
+  <!-- MEDIDAS GERADAS - card fixo, sempre visível -->
+  <div class="card">
+    <div class="card-title">Medidas geradas <span class="hint" id="tentativaHint"></span></div>
+    <div id="volumesGeradosBody">
+      <div class="result-empty">Preencha os dados e clique em "Gerar medidas" pra ver o resultado aqui.</div>
+    </div>
+  </div>
+
+  <!-- RESULTADO - card fixo, sempre visível -->
+  <div class="card">
+    <div class="card-title">Resultado</div>
+    <div class="res-row"><span>Volume total gerado</span><b id="volCalc">— m³</b></div>
+    <div class="res-row"><span>Peso cubado resultante</span><b id="pesoCubResult">— kg</b></div>
+    <div class="res-row"><span>Peso real informado</span><b id="pesoRealResult">— kg</b></div>
+
+    <div class="winner">
+      <div class="label">Peso cubado alvo batido</div>
+      <div class="value" id="alvoValue">— <span>kg</span></div>
+      <div class="note" id="alvoNote">Gere as medidas acima pra comparar com o alvo.</div>
+    </div>
+    <button class="add" id="btnCopiarResumo" style="display:none; background:var(--gold);">↗ Copiar resumo</button>
+  </div>
+
+  <footer>
+    © 2026 CargoCalc — Projeto demonstrativo de desenvolvimento web.<br>
+    Gerador de medidas para demonstração de lógica e interface.
+  </footer>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  let fatorSelecionado = 167;
+  let usandoCustom = false;
+
+  function fmt(n, casas){
+    if(!isFinite(n)) n = 0;
+    return n.toLocaleString('pt-BR', {minimumFractionDigits:casas, maximumFractionDigits:casas});
+  }
+  function num(el){
+    const v = parseFloat(String(el.value).replace(',', '.'));
+    return isNaN(v) ? 0 : v;
+  }
+  function limitarDigitos(el, maxDigitos = 5){
+    el.addEventListener('input', () => {
+      let digitos = 0, novo = '';
+      for(const ch of el.value){
+        if(ch >= '0' && ch <= '9'){
+          digitos++;
+          if(digitos > maxDigitos) continue;
+        }
+        novo += ch;
+      }
+      if(novo !== el.value) el.value = novo;
+    });
+  }
+  [$('pesoReal'), $('pesoCubadoAlvo'), $('fatorCustom')].forEach(el => limitarDigitos(el, 5));
+  limitarDigitos($('qtdVolumes'), 2);
+
+  // chips de fator
+  document.querySelectorAll('.chip[data-fator]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+      chip.classList.add('active');
+      fatorSelecionado = parseFloat(chip.dataset.fator);
+      usandoCustom = false;
+      $('customWrap').classList.remove('show');
+    });
+  });
+  $('chipCustom').addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+    $('chipCustom').classList.add('custom-active');
+    usandoCustom = true;
+    $('customWrap').classList.add('show');
+    $('fatorCustom').focus();
+  });
+
+  function fatorAtual(){
+    return usandoCustom ? (num($('fatorCustom')) || 0) : fatorSelecionado;
+  }
+
+  // Gera 3 medidas diferentes entre si cujo produto bate o volume-alvo (em cm³),
+  // tentando manter as proporções equilibradas (evita caixas muito "esticadas")
+  function gerarMedidas(volumeAlvoCm3){
+    const raizCubica = Math.cbrt(volumeAlvoCm3);
+
+    function tentar(limiteRazao, maxTentativas){
+      for(let tentativa = 1; tentativa <= maxTentativas; tentativa++){
+        const c = Math.max(1, Math.round(raizCubica * (0.55 + Math.random() * 1.3)));
+        const l = Math.max(1, Math.round(raizCubica * (0.55 + Math.random() * 1.3)));
+        if(l === c) continue;
+
+        const aExato = volumeAlvoCm3 / (c * l);
+        const a = Math.round(aExato * 10) / 10;
+
+        if(a <= 4 || a > 400) continue;
+        if(a === c || a === l) continue;
+
+        if(limiteRazao){
+          const maior = Math.max(c, l, a);
+          const menor = Math.min(c, l, a);
+          if(maior / menor > limiteRazao) continue;
+        }
+
+        return { c, l, a };
+      }
+      return null;
+    }
+
+    // 1ª tentativa: proporção equilibrada (no máximo 5x entre a maior e a menor medida)
+    return tentar(5, 250) || tentar(null, 300);
+  }
+
+  // Divide o volume-alvo total entre N volumes (frações aleatórias que somam o total)
+  // e gera as medidas de cada um. Tenta várias vezes até conseguir todos de uma vez.
+  function gerarVolumesMultiplos(volumeAlvoCm3Total, qtdVolumes){
+    for(let tentativaGeral = 1; tentativaGeral <= 40; tentativaGeral++){
+      let fracoes;
+      if(qtdVolumes === 1){
+        fracoes = [1];
+      } else {
+        const cortes = [];
+        for(let i = 0; i < qtdVolumes - 1; i++) cortes.push(Math.random());
+        cortes.sort((a,b) => a - b);
+        fracoes = [];
+        let anterior = 0;
+        for(const corte of cortes){ fracoes.push(corte - anterior); anterior = corte; }
+        fracoes.push(1 - anterior);
+      }
+
+      const volumes = [];
+      let falhou = false;
+      for(let i = 0; i < qtdVolumes; i++){
+        const subVolumeCm3 = volumeAlvoCm3Total * fracoes[i];
+        const resultado = gerarMedidas(subVolumeCm3);
+        if(!resultado){ falhou = true; break; }
+        volumes.push(resultado);
+      }
+      if(!falhou) return { volumes, tentativas: tentativaGeral };
+    }
+    return null;
+  }
+
+  let ultimosVolumes = [];
+
+  function renderVolumesGerados(volumes){
+    const body = $('volumesGeradosBody');
+    let volumeTotalM3 = 0;
+    let rows = '<table><thead><tr><th>#</th><th>Dimensões (C×L×A)</th><th>m³</th></tr></thead><tbody>';
+    volumes.forEach((v, i) => {
+      const volM3 = (v.c/100) * (v.l/100) * (v.a/100);
+      volumeTotalM3 += volM3;
+      rows += `<tr>
+        <td class="num">${i+1}</td>
+        <td>${fmt(v.c,0)}×${fmt(v.l,0)}×${fmt(v.a,1)} cm</td>
+        <td class="num">${fmt(volM3,2)}</td>
+      </tr>`;
+    });
+    rows += '</tbody></table>';
+    body.innerHTML = rows;
+    return volumeTotalM3;
+  }
+
+  function renderComparativoFatores(volumeTotalM3, fatorSelecionadoAtual){
+    const fatoresPadrao = [100, 167, 200, 250, 300];
+    const body = $('comparativoFatoresBody');
+
+    let html = fatoresPadrao.map(f => {
+      const peso = volumeTotalM3 * f;
+      const selecionado = f === fatorSelecionadoAtual && !usandoCustom;
+      return `<div class="fator-item ${selecionado ? 'selecionado' : ''}">
+        <div class="fnum"><b>${f}</b> kg/m³</div>
+        <span class="fvalor">${fmt(peso,2)} kg</span>
+        ${selecionado ? '<span class="ftag">selecionado</span>' : ''}
+      </div>`;
+    }).join('');
+
+    // caixinha "Outro" — só calcula de verdade se for a opção ativa; senão fica zerada
+    if(usandoCustom && fatorSelecionadoAtual > 0){
+      const pesoCustom = volumeTotalM3 * fatorSelecionadoAtual;
+      html += `<div class="fator-item selecionado">
+        <div class="fnum"><b>${fmt(fatorSelecionadoAtual,0)}</b> kg/m³</div>
+        <span class="fvalor">${fmt(pesoCustom,2)} kg</span>
+        <span class="ftag">selecionado</span>
+      </div>`;
+    } else {
+      html += `<div class="fator-item inativo">
+        <div class="fnum"><b>Outro</b></div>
+        <span class="fvalor">0,00 kg</span>
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  }
+
+  function gerar(){
+    const pesoReal = num($('pesoReal'));
+    const pesoCubadoAlvo = num($('pesoCubadoAlvo'));
+    const qtdVolumes = Math.max(1, Math.round(num($('qtdVolumes')) || 1));
+    const fator = fatorAtual();
+
+    if(pesoCubadoAlvo <= 0){
+      alert('Cubagem desejada não foi informada.');
+      $('pesoCubadoAlvo').focus();
+      return;
+    }
+    if(!fator || fator <= 0){
+      alert('Informe um fator de cubagem válido.');
+      return;
+    }
+
+    const volumeAlvoM3 = pesoCubadoAlvo / fator;
+    const volumeAlvoCm3 = volumeAlvoM3 * 1000000;
+
+    const resultado = gerarVolumesMultiplos(volumeAlvoCm3, qtdVolumes);
+
+    if(!resultado){
+      alert('Não consegui achar uma combinação de medidas razoável pra esse peso cubado, quantidade de volumes e fator. Tenta valores diferentes.');
+      return;
+    }
+
+    ultimosVolumes = resultado.volumes;
+
+    const volumeFinalM3 = renderVolumesGerados(resultado.volumes);
+    const pesoCubadoFinal = volumeFinalM3 * fator;
+
+    $('volCalc').textContent = fmt(volumeFinalM3, 2) + ' m³';
+    $('pesoCubResult').textContent = fmt(pesoCubadoFinal, 2) + ' kg';
+    $('pesoRealResult').textContent = fmt(pesoReal, 2) + ' kg';
+    $('alvoValue').innerHTML = fmt(pesoCubadoAlvo, 2) + ' <span>kg</span>';
+
+    $('alvoNote').textContent = '';
+
+    $('tentativaHint').textContent = qtdVolumes + ' volume' + (qtdVolumes>1?'s gerados':' gerado');
+    $('btnCopiarResumo').style.display = 'block';
+    renderComparativoFatores(volumeFinalM3, fator);
+  }
+
+  function textoResumo(){
+    const volumeTotalM3 = ultimosVolumes.reduce((s, v) => s + (v.c/100) * (v.l/100) * (v.a/100), 0);
+    const pesoReal = num($('pesoReal'));
+    const fator = fatorAtual();
+    const pesoCubado = volumeTotalM3 * fator;
+    const pesoPorVolume = ultimosVolumes.length > 0 ? pesoReal / ultimosVolumes.length : 0;
+    const linhas = ultimosVolumes.map((v, i) => {
+      return `${i + 1}. Peso: ${fmt(pesoPorVolume,2)} kg | Med: ${fmt(v.c,0)}×${fmt(v.l,0)}×${fmt(v.a,1)} cm | Qtd: 1`;
+    }).join('\n');
+    return `CargoCalc — Gerador de Cubagem\nData: ${new Date().toLocaleString('pt-BR')}\n\nVolumes (${ultimosVolumes.length}):\n${linhas}\n\nMetro Cúbico: ${fmt(volumeTotalM3,2)} m³\nPeso real: ${fmt(pesoReal,2)} kg\nPeso cubado: ${fmt(pesoCubado,2)} kg\nFator: ${fmt(fator,0)} kg/m³`;
+  }
+
+  async function copiarResumo(){
+    if(!ultimosVolumes.length){
+      alert('Gere as medidas antes de copiar o resumo.');
+      return;
+    }
+    const texto = textoResumo();
+    try{
+      await navigator.clipboard.writeText(texto);
+    }catch(err){
+      const area = document.createElement('textarea');
+      area.value = texto;
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    const botao = $('btnCopiarResumo');
+    const original = botao.textContent;
+    botao.textContent = '✓ Resumo copiado';
+    setTimeout(() => { botao.textContent = original; }, 1800);
+  }
+
+  $('btnGerar').addEventListener('click', gerar);
+  $('btnRegenerar').addEventListener('click', gerar);
+  $('btnCopiarResumo').addEventListener('click', copiarResumo);
+
+  $('btnLimparTudo').addEventListener('click', () => {
+    const temDados = $('pesoReal').value.trim() !== ''
+      || $('pesoCubadoAlvo').value.trim() !== ''
+      || $('qtdVolumes').value.trim() !== '' && $('qtdVolumes').value.trim() !== '1'
+      || $('fatorCustom').value.trim() !== ''
+      || usandoCustom
+      || ultimosVolumes.length > 0;
+
+    if(!temDados){
+      alert('Não há dados para serem limpos.');
+      $('pesoReal').focus();
+      return;
+    }
+    if(!confirm('Limpar todos os dados e resultados gerados?')) return;
+
+    $('pesoReal').value = '';
+    $('pesoCubadoAlvo').value = '';
+    $('qtdVolumes').value = 1;
+    $('fatorCustom').value = '';
+
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+    document.querySelector('.chip[data-fator="167"]').classList.add('active');
+    fatorSelecionado = 167;
+    usandoCustom = false;
+    $('customWrap').classList.remove('show');
+
+    ultimosVolumes = [];
+    $('volumesGeradosBody').innerHTML = '<div class="result-empty">Preencha os dados e clique em "Gerar medidas" pra ver o resultado aqui.</div>';
+    $('comparativoFatoresBody').innerHTML = '<div class="result-empty">Gere as medidas pra ver quanto essa carga pesaria cubada em cada fator.</div>';
+    $('tentativaHint').textContent = '';
+
+    $('volCalc').textContent = '— m³';
+    $('pesoCubResult').textContent = '— kg';
+    $('pesoRealResult').textContent = '— kg';
+    $('alvoValue').innerHTML = '— <span>kg</span>';
+    $('alvoNote').textContent = 'Gere as medidas acima pra comparar com o alvo.';
+    $('btnCopiarResumo').style.display = 'none';
+
+    $('pesoReal').focus();
+  });
+</script>
+</body>
+</html>

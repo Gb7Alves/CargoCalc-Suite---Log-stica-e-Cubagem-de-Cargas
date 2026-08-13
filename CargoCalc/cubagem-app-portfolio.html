@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Cubagem — CargoCalc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg: #2a1027;
+    --bg-panel: #3a1836;
+    --bg-panel-2: #26102380;
+    --bg-input: #21091f;
+    --line: #5c2c56;
+    --line-soft: rgba(232,115,74,0.08);
+    --text: #f5ece8;
+    --text-muted: #b494ae;
+    --orange: #e8734a;
+    --orange-dim: #6b3220;
+    --gold: #d4a64a;
+    --gold-dim: #5c451c;
+    --radius: 14px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--line-soft) 1px, transparent 1px) 0 0/32px 32px,
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px) 0 0/32px 32px,
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Mono', monospace;
+    min-height:100vh;
+    padding:20px 14px 60px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:460px;margin:0 auto;}
+
+  /* --- brand header --- */
+  .brand{
+    display:flex; align-items:center; gap:12px; margin-bottom:18px;
+    padding:14px 16px; border-radius:var(--radius);
+    background: linear-gradient(120deg, #3d1339 0%, #4a1a3f 55%, #33122f 100%);
+    border:1px solid var(--line);
+    position:relative; overflow:hidden;
+  }
+  .brand::after{
+    content:''; position:absolute; top:0; right:0; width:130px; height:100%;
+    background: linear-gradient(135deg, #f2895f, var(--orange));
+    clip-path: polygon(100% 0, 100% 100%, 40% 100%, 58% 50%, 40% 0);
+  }
+  .brand-logo{
+    width:44px; height:44px; border-radius:10px; flex-shrink:0;
+    background: var(--bg-input); border:1px dashed var(--line);
+    display:flex; align-items:center; justify-content:center;
+    font-size:9px; color:var(--text-muted); text-align:center; line-height:1.2;
+    overflow:hidden; position:relative; z-index:1;
+  }
+  .brand-logo img{width:100%; height:100%; object-fit:contain;}
+  .brand-text{position:relative; z-index:1;}
+  .brand-name{
+    font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  .brand-name span{color:var(--orange);}
+  .brand-tag{font-size:10.5px; color:var(--gold); letter-spacing:.05em; margin-top:1px;}
+
+  .nav-projects{display:flex; gap:8px; margin-bottom:18px;}
+  .nav-btn{
+    flex:1; padding:12px 10px; border-radius:10px; border:none; cursor:pointer;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px;
+    letter-spacing:.01em; transition:filter .15s, opacity .15s;
+    background: var(--bg-panel); border:1px solid var(--line); color:var(--text-muted);
+  }
+  .nav-btn.active{
+    background: var(--orange); color:#fff; border-color:var(--orange);
+  }
+  .nav-btn.active:hover{filter:brightness(1.06);}
+  .nav-btn.disabled{
+    opacity:.55; cursor:not-allowed;
+  }
+  .nav-btn.disabled:active{filter:none;}
+
+  header{margin-bottom:16px;}
+  .eyebrow{
+    font-size:11px; letter-spacing:.16em; color:var(--orange);
+    text-transform:uppercase; font-weight:600; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:26px; font-weight:700; margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--text-muted); font-size:13px; line-height:1.5;}
+
+  .card{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .card-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:13px; font-weight:600; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.08em;
+    margin:0 0 14px; display:flex; align-items:center; justify-content:space-between;
+  }
+  .card-title .hint{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:400;
+    text-transform:none; letter-spacing:0; color:var(--text-muted); opacity:.75;
+  }
+
+  /* --- crate 3d --- */
+  .stage{
+    height:160px; display:flex; align-items:center; justify-content:center;
+    perspective:700px;
+  }
+  .crate{
+    position:relative;
+    width:var(--cw,90px); height:var(--ch,90px);
+    transform-style:preserve-3d;
+    transform: rotateX(-24deg) rotateY(-38deg);
+    transition: width .25s ease, height .25s ease;
+  }
+  .face{
+    position:absolute; top:0; left:0;
+    width:var(--cw,90px); height:var(--ch,90px);
+    border:1.5px solid var(--orange);
+    background: rgba(232,115,74,0.10);
+  }
+  .face.front{ transform: translateZ(calc(var(--cd,90px)/2)); }
+  .face.back{  transform: translateZ(calc(var(--cd,90px)/-2)) rotateY(180deg); }
+  .face.right{ width:var(--cd,90px); transform: rotateY(90deg) translateZ(calc(var(--cw,90px) - var(--cd,90px)/2)); }
+  .face.left{  width:var(--cd,90px); transform: rotateY(-90deg) translateZ(calc(var(--cd,90px)/2)); }
+  .face.top{   height:var(--cd,90px); transform: rotateX(90deg) translateZ(calc(var(--cd,90px)/2)); }
+  .face.bottom{height:var(--cd,90px); transform: rotateX(-90deg) translateZ(calc(var(--ch,90px) - var(--cd,90px)/2)); }
+
+  .dims-row{
+    display:flex; justify-content:space-between; margin-top:2px;
+    font-size:11px; color:var(--text-muted);
+  }
+  .dims-row span b{color:var(--orange); font-weight:600;}
+
+  /* --- form --- */
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block; font-size:11px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;
+  }
+  .field input{
+    width:100%; background:var(--bg-input); border:1px solid var(--line);
+    border-radius:8px; padding:11px 12px; color:var(--text);
+    font-family:'IBM Plex Mono',monospace; font-size:15px;
+    outline:none; transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--orange);}
+  .select-wrap{position:relative;}
+  .select-wrap::after{
+    content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%);
+    color:var(--orange); font-size:12px; pointer-events:none;
+  }
+  .select-wrap select{
+    width:100%; appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    background:var(--bg-input); border:1px solid var(--line);
+    border-radius:8px; padding:11px 34px 11px 12px; color:var(--text);
+    font-family:'IBM Plex Mono',monospace; font-size:14px;
+    outline:none; transition:border-color .15s; cursor:pointer;
+  }
+  .select-wrap select:focus{border-color:var(--orange);}
+  .select-wrap select option{background:var(--bg-panel); color:var(--text);}
+  .select-wrap select option.manual-filled{background:var(--bg-panel); color:#7ee2a8; font-weight:600;}
+  .select-wrap select.is-filled{color:#7ee2a8;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+  .chip{
+    border:1px solid var(--line); background:var(--bg-input);
+    color:var(--text-muted); border-radius:20px; padding:8px 14px;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; cursor:pointer;
+    user-select:none; transition:.15s;
+  }
+  .chip small{display:block; font-size:9px; opacity:.75; margin-top:1px;}
+  .chip.active{background:rgba(232,115,74,0.18); border-color:var(--orange); color:var(--text);}
+  .chip.custom-active{background:rgba(212,166,74,0.16); border-color:var(--gold); color:var(--text);}
+
+  .custom-wrap{display:none; margin-top:2px;}
+  .custom-wrap.show{display:block;}
+
+  /* --- buttons --- */
+  button.add{
+    width:100%; margin-top:6px; padding:13px; border-radius:10px; border:none;
+    background:var(--orange); color:#fff; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:14px; cursor:pointer; letter-spacing:.02em;
+    transition:filter .15s;
+  }
+  button.add:hover{filter:brightness(1.08);}
+  button.add:active{filter:brightness(0.92);}
+  button.add.editing{background:var(--gold);}
+
+  button.cancel-edit{
+    width:100%; margin-top:8px; padding:10px; border-radius:10px;
+    border:1px solid var(--line); background:transparent; color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; cursor:pointer;
+    display:none;
+  }
+  button.cancel-edit.show{display:block;}
+
+  .editing-banner{
+    display:none; align-items:center; gap:8px; background:rgba(212,166,74,0.12);
+    border:1px solid var(--gold-dim); color:var(--gold); font-size:11.5px;
+    padding:8px 12px; border-radius:8px; margin-bottom:12px;
+  }
+  .editing-banner.show{display:flex;}
+
+  /* --- results --- */
+  .res-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:9px 0; border-bottom:1px dashed var(--line);
+    font-size:13px; color:var(--text-muted);
+  }
+  .res-row:last-of-type{border-bottom:none;}
+  .res-row b{color:var(--text); font-size:14px; font-weight:500;}
+
+  .winner{
+    margin-top:14px; border-radius:10px;
+    background:linear-gradient(135deg, rgba(232,115,74,0.16), rgba(212,166,74,0.06));
+    border:1px solid var(--orange-dim);
+    padding:16px;
+  }
+  .winner .label{
+    font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600;
+    color:var(--gold); text-transform:uppercase; letter-spacing:.08em;
+    margin-bottom:6px;
+  }
+  .winner .value{font-size:30px; font-weight:600; letter-spacing:-0.02em;}
+  .winner .value span{font-size:15px; color:var(--text-muted); font-weight:400;}
+  .winner .note{font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.5;}
+
+  /* --- history / volume list --- */
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  th{
+    text-align:left; color:var(--text-muted); font-weight:500;
+    font-size:10px; text-transform:uppercase; letter-spacing:.04em;
+    padding-bottom:8px; border-bottom:1px solid var(--line);
+  }
+  td{padding:9px 0; border-bottom:1px solid var(--line); vertical-align:middle;}
+  td.num{font-family:'IBM Plex Mono',monospace;}
+  .empty{color:var(--text-muted); font-size:12.5px; text-align:center; padding:18px 0;}
+  .row-actions{display:flex; gap:10px;}
+  .icon-btn{
+    background:none; border:none; cursor:pointer; font-size:14px; padding:0;
+    color:var(--text-muted); line-height:1;
+  }
+  .icon-btn:hover{color:var(--orange);}
+  .icon-btn.del-btn:hover{color:#ff6a6a;}
+  .total-line{
+    display:flex; justify-content:space-between; margin-top:12px; padding-top:12px;
+    border-top:1px solid var(--line); font-size:13px;
+  }
+  .total-line b{color:var(--gold); font-size:16px;}
+
+  footer{text-align:center; color:var(--text-muted); font-size:10.5px; margin-top:20px; line-height:1.6;}
+
+  .avg-line{display:grid; grid-template-columns:repeat(auto-fit, minmax(0,1fr)); gap:8px;}
+  .avg-item{text-align:center; min-width:0;}
+  .avg-label{
+    display:block; font-size:10px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px;
+  }
+  .avg-value{
+    display:block; font-family:'Space Grotesk',sans-serif; font-size:14px;
+    font-weight:600; color:var(--gold); word-break:break-word;
+  }
+
+  .result-item{
+    border-bottom:1px dashed var(--line);
+  }
+  .result-item:last-child{border-bottom:none;}
+  .result-item summary{
+    list-style:none; cursor:pointer; padding:12px 0;
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .result-item summary::-webkit-details-marker{display:none;}
+  .result-item summary::after{
+    content:'▾'; color:var(--text-muted); font-size:11px; margin-left:auto; transition:transform .15s;
+  }
+  .result-item[open] summary::after{transform:rotate(180deg);}
+  .result-item .rvalue{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--text);
+    flex:0 0 auto;
+  }
+  .result-item .rstats{
+    display:flex; gap:14px; font-size:12px; color:var(--text-muted); flex-wrap:wrap;
+  }
+  .result-item .rstats b{color:var(--gold); font-weight:500;}
+  .result-item .rempty{font-size:12px; color:var(--text-muted); font-style:italic;}
+  .result-item .rwarning{font-size:12.5px; color:#ff8a7a; font-weight:400;}
+  .manual-empty-msg{font-size:13px; color:var(--text-muted); font-weight:500;}
+  .result-detail{padding:0 0 14px;}
+  .result-detail table{width:100%;}
+
+  .manual-badge{
+    font-size:9.5px; color:var(--gold); background:rgba(212,166,74,0.14);
+    border:1px solid var(--gold-dim); border-radius:20px; padding:2px 9px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .manual-form{
+    background:var(--bg-input); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-top:10px;
+  }
+  .manual-form .field{margin-bottom:8px;}
+  .manual-form .grid3, .manual-form .grid2{margin-bottom:8px;}
+  .manual-form input{padding:9px 10px; font-size:13px;}
+
+  /* proporções das tabelas no celular (Manual e Relatório) */
+  table{table-layout:fixed;}
+  th, td{padding:4px 0; line-height:1.2; vertical-align:middle;}
+  th{padding-bottom:6px;}
+  td:first-child, th:first-child{width:32%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  td:nth-child(2), th:nth-child(2){width:12%; text-align:center;}
+  td:last-child, th:last-child{text-align:right;}
+  .row-actions{justify-content:flex-end; gap:0; min-height:32px;}
+  .row-actions .icon-btn{min-width:32px; min-height:32px; width:32px; height:32px; padding:0; font-size:13px;}
+
+  /* ajustes específicos para a lista principal (5 colunas) */
+  #historyBody td:nth-child(3), #historyBody th:nth-child(3){width:14%; text-align:right;}
+  #historyBody td:nth-child(4), #historyBody th:nth-child(4){width:20%; text-align:right;}
+  #historyBody td:nth-child(5), #historyBody th:nth-child(5){width:22%; text-align:right;}
+
+
+  /* --- melhorias mobile --- */
+  .field input, .select-wrap select{min-height:44px;}
+  button.add{min-height:44px;}
+  .row-actions{gap:2px;}
+  .icon-btn{
+    min-width:44px; min-height:44px; display:inline-flex;
+    align-items:center; justify-content:center; border-radius:8px;
+    touch-action:manipulation;
+  }
+  .icon-btn:focus-visible, .nav-btn:focus-visible, button:focus-visible,
+  input:focus-visible, select:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .toast{
+    position:fixed; left:50%; bottom:18px; z-index:50; transform:translate(-50%, 18px);
+    width:min(92vw, 420px); padding:12px 14px; border-radius:10px;
+    background:#170a16; border:1px solid var(--orange); color:var(--text);
+    box-shadow:0 8px 30px rgba(0,0,0,.35); font-size:12px; line-height:1.4;
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s;
+  }
+  .toast.show{opacity:1; transform:translate(-50%, 0);}
+  .toast.error{border-color:#ff6a6a;}
+  .toast.info{border-color:var(--gold);}
+  .search-feedback{
+    display:none; margin-top:10px; padding:10px 12px; border:1px solid rgba(232,115,74,.55);
+    border-radius:8px; background:rgba(232,115,74,.12); color:#ffb39a;
+    font-size:12px; line-height:1.45;
+  }
+  @media (max-width:360px){
+    .grid3{gap:6px;}
+    .field input{padding-left:9px; padding-right:9px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div class="brand-text">
+      <div class="brand-name">Cargo<span>Calc</span></div>
+      <div class="brand-tag">CUBAGEM DE CARGA</div>
+    </div>
+  </div>
+
+  <div class="nav-projects">
+    <button class="nav-btn active" id="navManual">Cubagem Manual</button>
+    <button class="nav-btn" id="navRelatorio">Relatório de Cubagens</button>
+  </div>
+
+  <div id="viewManual">
+  <header>
+    <div class="eyebrow">Ferramenta interna</div>
+    <h1>Cubagem</h1>
+    <div class="sub">Cadastre cada volume da carga com seu peso real. O sistema soma tudo e compara com o peso cubado.</div>
+  </header>
+
+  <!-- CRATE VISUAL + INPUT DE VOLUME -->
+  <div class="card">
+    <div class="card-title">
+      Adicionar volume
+      <span class="hint">preview em tempo real</span>
+    </div>
+
+    <div class="editing-banner" id="editingBanner">✎ Editando volume da lista — altere os campos e salve.</div>
+
+    <div class="stage">
+      <div class="crate" id="crate">
+        <div class="face front"></div>
+        <div class="face back"></div>
+        <div class="face right"></div>
+        <div class="face left"></div>
+        <div class="face top"></div>
+        <div class="face bottom"></div>
+      </div>
+    </div>
+    <div class="dims-row">
+      <span>C: <b id="dimC">—</b> cm</span>
+      <span>L: <b id="dimL">—</b> cm</span>
+      <span>A: <b id="dimA">—</b> cm</span>
+    </div>
+
+    <div class="grid3" style="margin-top:16px;">
+      <div class="field">
+        <label>Compr. (cm)</label>
+        <input type="number" id="comprimento" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Largura (cm)</label>
+        <input type="number" id="largura" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label>Altura (cm)</label>
+        <input type="number" id="altura" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Quantidade deste volume</label>
+        <input type="number" id="qtvols" inputmode="decimal" value="1">
+      </div>
+      <div class="field">
+        <label>Peso real deste volume (kg)</label>
+        <input type="number" id="pesorealvol" inputmode="decimal" placeholder="0">
+      </div>
+    </div>
+
+    <button class="add" id="btnAdd">+ Adicionar volume à carga</button>
+    <button class="cancel-edit" id="btnCancelEdit">Cancelar edição</button>
+  </div>
+
+  <!-- LISTA DE VOLUMES DA CARGA -->
+  <div class="card">
+    <div class="card-title">Volumes da carga <span class="hint" id="itemCount"></span></div>
+    <div id="historyBody">
+      <div class="empty">Nenhum volume cadastrado ainda. Adicione acima.</div>
+    </div>
+    <div class="total-line" id="totalVolLine" style="display:none;">
+      <span>Metro cúbico total da carga</span>
+      <b id="totalVolGeral">0,000 m³</b>
+    </div>
+    <div class="total-line" id="totalPesoLine" style="display:none;">
+      <span>Peso real total da carga</span>
+      <b id="totalPesoGeral">0,00 kg</b>
+    </div>
+  </div>
+
+  <!-- MEDIA DA CARGA -->
+  <div class="card" id="avgCard">
+    <div class="card-title">
+      Média da carga
+      <span class="hint" id="avgHint">aguardando volumes</span>
+    </div>
+    <div class="avg-line">
+      <div class="avg-item">
+        <span class="avg-label">Medida média</span>
+        <span class="avg-value" id="avgMedidas">—</span>
+      </div>
+      <div class="avg-item">
+        <span class="avg-label">Qtd. total</span>
+        <span class="avg-value" id="avgQtd">—</span>
+      </div>
+      <div class="avg-item">
+        <span class="avg-label">Peso informado</span>
+        <span class="avg-value" id="avgPeso">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FACTOR -->
+  <div class="card">
+    <div class="card-title">Fator de cubagem (kg/m³)</div>
+    <div class="chips" id="chips">
+      <div class="chip" data-fator="100">100<small>Fracionado</small></div>
+      <div class="chip" data-fator="167">167<small>Aéreo</small></div>
+      <div class="chip" data-fator="200">200<small>Rodoviário alt.</small></div>
+      <div class="chip" data-fator="250">250<small>Rodoviário alt.</small></div>
+      <div class="chip" data-fator="300">300<small>Rodoviário</small></div>
+      <div class="chip" id="chipCustom">Outro<small>customizado</small></div>
+    </div>
+    <div class="custom-wrap" id="customWrap">
+      <div class="field" style="margin-bottom:0">
+        <label>Fator customizado (kg/m³)</label>
+        <input type="number" id="fatorCustom" inputmode="decimal" placeholder="Ex: 220">
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card">
+    <div class="card-title">Resultado da carga</div>
+    <div class="res-row"><span>Metro cúbico total da carga</span><b id="volTotal">0,00 m³</b></div>
+    <div class="res-row"><span>Peso real total (soma dos volumes)</span><b id="pesoRealOut">0,00 kg</b></div>
+    <div class="res-row"><span>Peso cubado (volume × fator)</span><b id="pesoCubado">0,00 kg</b></div>
+
+    <div class="winner">
+      <div class="label" id="winnerLabel">Peso considerado no frete</div>
+      <div class="value" id="winnerValue">0,00 <span>kg</span></div>
+      <div class="note" id="winnerNote">Cadastre os volumes e informe o peso real para calcular.</div>
+    </div>
+  </div>
+
+  <button class="add" id="btnShareManual" style="display:none; background:var(--gold);">↗ Compartilhar resumo da carga</button>
+  <button class="add" id="btnReset" style="background:var(--orange); border:1px solid var(--orange); color:#fff;">↺ Limpar tudo e começar nova carga</button>
+
+  <footer>
+    © 2026 CargoCalc — Projeto demonstrativo de desenvolvimento web.<br>
+    Ferramenta de portfólio para operações de cubagem logística.
+  </footer>
+  </div>
+
+  <!-- ================= RELATÓRIO DE CUBAGENS ================= -->
+  <div id="viewRelatorio" style="display:none;">
+
+    <header>
+      <div class="eyebrow">Ferramenta interna</div>
+      <h1>Relatório</h1>
+      <div class="sub">Busque uma ND pelo AWB/RCC ou pelo número da ND direto na planilha.</div>
+    </header>
+
+    <!-- FONTE DE DADOS -->
+    <div class="card">
+      <div class="card-title">Fonte de dados</div>
+      <div class="sub" style="margin-bottom:12px;">
+        O app tenta carregar as planilhas sozinho da pasta <b>data/</b> do site (arquivos <code>planilha-nds.xlsx</code> e <code>cubagens-simples.xlsx</code>). Se não achar, carregue manualmente abaixo.
+      </div>
+
+      <div class="field">
+        <label>Planilha de ND's <span style="color:var(--text-muted); text-transform:none;">— <span id="ndFileStatus">nenhum arquivo carregado</span></span></label>
+        <input type="file" id="ndFileInput" accept=".xlsx,.xls" style="display:none;">
+        <button class="add" id="btnLoadFile" style="background:var(--gold); margin-top:0;">📁 Carregar Planilha de ND's</button>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Planilha de Cubagens Simples <span style="color:var(--text-muted); text-transform:none;">— <span id="cubFileStatus">nenhum arquivo carregado</span></span></label>
+        <input type="file" id="cubFileInput" accept=".xlsx,.xls" style="display:none;">
+        <button class="add" id="btnLoadCubFile" style="background:var(--gold); margin-top:0;">📁 Carregar Cubagens Simples</button>
+      </div>
+      <button class="add" id="btnClearSheets" style="background:transparent; border:1px solid var(--line); color:var(--text-muted); margin-top:0;">🗑️ Limpar planilhas carregadas</button>
+    </div>
+
+    <!-- BUSCA -->
+    <div class="card">
+      <div class="card-title">Buscar ND</div>
+      <div class="grid2">
+        <div class="field">
+          <label>AWB/RCC</label>
+          <input type="text" id="buscaAwb" placeholder="Ex: 11921415">
+        </div>
+        <div class="field">
+          <label>ND</label>
+          <input type="text" id="buscaNd" placeholder="Ex: 11921372">
+        </div>
+      </div>
+      <button class="add" id="btnBuscar">🔍 Pesquisar</button>
+      <div class="search-feedback" id="searchFeedback" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- ADICIONAR CUBAGEM MANUAL -->
+    <div class="card" id="manualCard" style="display:none;">
+      <div class="card-title">Adicionar cubagem manual</div>
+      <div class="field">
+        <label>Lançar cubagem para a ND</label>
+        <div class="select-wrap">
+          <select id="manualNdSelect"></select>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="field">
+          <label>Compr. (cm)</label>
+          <input type="number" id="manualC" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Largura (cm)</label>
+          <input type="number" id="manualL" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Altura (cm)</label>
+          <input type="number" id="manualA" placeholder="0">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Quantidade</label>
+          <input type="number" id="manualQt" value="1">
+        </div>
+        <div class="field">
+          <label>Peso real deste volume (kg)</label>
+          <input type="number" id="manualPeso" placeholder="0">
+        </div>
+      </div>
+      <button class="add" id="btnManualSave">+ Adicionar volume à ND</button>
+      <button class="add cancel-edit" id="btnManualCancel" style="background:transparent; border:1px solid var(--line); color:var(--text-muted);">Cancelar edição</button>
+
+      <div id="manualListForNd" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- MEDIA DA CARGA (todas as NDs encontradas, combinadas) -->
+    <div class="card" id="avgCardRel">
+      <div class="card-title">
+        Média da carga
+        <span class="hint" id="avgHintRel">aguardando busca</span>
+      </div>
+      <div class="avg-line">
+        <div class="avg-item">
+          <span class="avg-label">Medida média</span>
+          <span class="avg-value" id="avgMedidasRel">—</span>
+        </div>
+        <div class="avg-item">
+          <span class="avg-label">Qtd. total</span>
+          <span class="avg-value" id="avgQtdRel">—</span>
+        </div>
+        <div class="avg-item">
+          <span class="avg-label">Peso informado</span>
+          <span class="avg-value" id="avgPesoRel">—</span>
+        </div>
+        <div class="avg-item">
+          <span class="avg-label">Metro cúbico</span>
+          <span class="avg-value" id="avgVolRel">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTADO DA BUSCA (lista de NDs) -->
+    <div class="card" id="resultCard" style="display:none;">
+      <div class="card-title">Grupo - ND <span class="hint" id="resultCount"></span></div>
+      <div id="resultBody"></div>
+    </div>
+
+    <!-- RESULTADO FINAL (totais) -->
+    <div class="card" id="resultTotalCard" style="display:none;">
+      <div class="card-title">Resultado</div>
+      <div class="res-row"><span>Metro cúbico total da carga</span><b id="relVolTotal">0,00 m³</b></div>
+      <div class="res-row"><span>Peso real total (soma dos volumes)</span><b id="relPesoRealOut">0,00 kg</b></div>
+      <div class="res-row"><span>Peso cubado (soma por ND)</span><b id="relPesoCubado">0,00 kg</b></div>
+
+      <div class="winner">
+        <div class="label">Peso considerado no frete</div>
+        <div class="value" id="relWinnerValue">0,00 <span>kg</span></div>
+        <div class="note" id="relWinnerNote"></div>
+      </div>
+    </div>
+
+    <div class="empty" id="resultEmpty">Carregue as planilhas e faça uma busca para ver os resultados aqui.</div>
+
+    <button class="add" id="btnShareRelatorio" style="display:none; background:var(--gold);">↗ Compartilhar resumo do relatório</button>
+    <button class="add" id="btnClearBusca" style="background:var(--orange); border:1px solid var(--orange); color:#fff;">↺ Limpar busca e resultado</button>
+
+    <footer>
+© 2026 CargoCalc — Projeto demonstrativo de desenvolvimento web.<br>
+    Relatórios de cubagem para fins de demonstração.
+    </footer>
+
+  </div>
+  <!-- =========================================================== -->
+
+</div>
+
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+
+<script>
+  const $ = id => document.getElementById(id);
+  const els = {
+    comprimento: $('comprimento'), largura: $('largura'), altura: $('altura'),
+    qtvols: $('qtvols'), pesorealvol: $('pesorealvol'), fatorCustom: $('fatorCustom')
+  };
+  const crate = $('crate');
+  ['comprimento','largura','altura','qtvols','pesorealvol','fatorCustom','manualC','manualL','manualA','manualQt','manualPeso'].forEach(id => {
+    const el = $(id);
+    if(el){ el.min = '0'; el.step = 'any'; }
+  });
+  let fatorSelecionado = 167;
+  let usandoCustom = false;
+  let volumes = []; // { c, l, a, qt, volTotal, pesoReal }
+  let editingIndex = null;
+
+  function fmt(n, casas){
+    if(!isFinite(n)) n = 0;
+    return n.toLocaleString('pt-BR', {minimumFractionDigits:casas, maximumFractionDigits:casas});
+  }
+
+  function num(el){
+    const v = parseFloat(String(el.value).replace(',', '.'));
+    return isNaN(v) ? 0 : v;
+  }
+
+  // Limita a no máximo N dígitos digitados num campo numérico (ignora o ponto/vírgula decimal e o sinal de menos)
+  function limitarDigitos(el, maxDigitos = 5){
+    el.addEventListener('input', () => {
+      let digitos = 0;
+      let novo = '';
+      for(const ch of el.value){
+        if(ch >= '0' && ch <= '9'){
+          digitos++;
+          if(digitos > maxDigitos) continue;
+        }
+        novo += ch;
+      }
+      if(novo !== el.value) el.value = novo;
+    });
+  }
+
+  function updateCrateVisual(c, l, a){
+    const dims = [c, l, a].filter(v => v > 0);
+    if(dims.length === 0){
+      // nada preenchido ainda: caixinha neutra de tamanho fixo, sem "explodir" a tela
+      crate.style.setProperty('--cw', '64px');
+      crate.style.setProperty('--cd', '64px');
+      crate.style.setProperty('--ch', '64px');
+      return;
+    }
+    const maxDim = Math.max(...dims);
+    const fallback = maxDim * 0.4; // estimativa proporcional pra dimensão ainda não preenchida
+    const scale = 130 / maxDim;
+    const cw = Math.max(24, (c || fallback) * scale);
+    const cd = Math.max(24, (l || fallback) * scale);
+    const ch = Math.max(24, (a || fallback) * scale);
+    crate.style.setProperty('--cw', cw.toFixed(1) + 'px');
+    crate.style.setProperty('--cd', cd.toFixed(1) + 'px');
+    crate.style.setProperty('--ch', ch.toFixed(1) + 'px');
+  }
+
+  function currentInputPreview(){
+    const c = num(els.comprimento), l = num(els.largura), a = num(els.altura);
+    $('dimC').textContent = c > 0 ? fmt(c,0) : '—';
+    $('dimL').textContent = l > 0 ? fmt(l,0) : '—';
+    $('dimA').textContent = a > 0 ? fmt(a,0) : '—';
+    updateCrateVisual(c, l, a);
+  }
+
+  function fatorAtual(){
+    return usandoCustom ? (num(els.fatorCustom) || 0) : fatorSelecionado;
+  }
+
+  function calcTotais(){
+    const volTotal = volumes.reduce((sum, v) => sum + v.volTotal, 0);
+    const pesoReal = volumes.reduce((sum, v) => sum + v.pesoReal, 0);
+    const fator = fatorAtual();
+    const pesoCubado = volTotal * fator;
+    const maior = Math.max(pesoCubado, pesoReal);
+
+    $('volTotal').textContent = fmt(volTotal,2) + ' m³';
+    $('pesoCubado').textContent = fmt(pesoCubado,2) + ' kg';
+    $('pesoRealOut').textContent = fmt(pesoReal,2) + ' kg';
+    $('winnerValue').innerHTML = fmt(maior,2) + ' <span>kg</span>';
+
+    if(usandoCustom && fator <= 0){
+      $('winnerNote').textContent = 'Informe um fator customizado maior que zero para calcular o peso cubado.';
+    } else if(volumes.length === 0){
+      $('winnerNote').textContent = 'Cadastre os volumes e informe o peso real para calcular.';
+    } else if(pesoReal === 0){
+      $('winnerNote').textContent = 'Informe o peso real da carga para comparar com o peso cubado.';
+    } else if(pesoCubado >= pesoReal){
+      $('winnerNote').textContent = 'O peso cubado é maior que o real.';
+    } else {
+      $('winnerNote').textContent = 'O peso real é maior que o cubado.';
+    }
+  }
+
+  function renderList(){
+    const body = $('historyBody');
+    const count = $('itemCount');
+    const totalLine = $('totalVolLine');
+    if(volumes.length === 0){
+      $('btnShareManual').style.display = 'none';
+      body.innerHTML = '<div class="empty">Nenhum volume cadastrado ainda. Adicione acima.</div>';
+      count.textContent = '';
+      totalLine.style.display = 'none';
+      $('totalPesoLine').style.display = 'none';
+      $('avgHint').textContent = 'aguardando volumes';
+      $('avgMedidas').textContent = '—';
+      $('avgQtd').textContent = '—';
+      $('avgPeso').textContent = '—';
+      calcTotais();
+      return;
+    }
+    $('btnShareManual').style.display = 'block';
+    count.textContent = '(' + volumes.length + ')';
+    let rows = '<table><thead><tr><th>Dimensões</th><th>Qtd</th><th>m³</th><th>Peso real</th><th></th></tr></thead><tbody>';
+    let totalVol = 0, totalPeso = 0;
+    volumes.forEach((v, i) => {
+      totalVol += v.volTotal;
+      totalPeso += v.pesoReal;
+      rows += `<tr>
+        <td>${fmt(v.c,0)}×${fmt(v.l,0)}×${fmt(v.a,0)} cm</td>
+        <td class="num">${v.qt}</td>
+        <td class="num">${fmt(v.volTotal,2)}</td>
+        <td class="num">${fmt(v.pesoReal,2)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn edit-btn" data-i="${i}" title="Editar" aria-label="Editar volume">✎</button>
+            <button class="icon-btn del-btn" data-i="${i}" title="Excluir" aria-label="Excluir volume">✕</button>
+          </div>
+        </td>
+      </tr>`;
+    });
+    rows += '</tbody></table>';
+    body.innerHTML = rows;
+    totalLine.style.display = 'flex';
+    $('totalPesoLine').style.display = 'flex';
+    $('totalVolGeral').textContent = fmt(totalVol,2) + ' m³';
+    $('totalPesoGeral').textContent = fmt(totalPeso,2) + ' kg';
+
+    // média simples das dimensões por linha cadastrada (não ponderada por qtd, igual a AVERAGE() da planilha)
+    const avgC = volumes.reduce((s,v) => s + v.c, 0) / volumes.length;
+    const avgL = volumes.reduce((s,v) => s + v.l, 0) / volumes.length;
+    const avgA = volumes.reduce((s,v) => s + v.a, 0) / volumes.length;
+    const totalQtd = volumes.reduce((s,v) => s + v.qt, 0);
+    $('avgHint').textContent = volumes.length + ' volume' + (volumes.length > 1 ? 's' : '') + ' cadastrado' + (volumes.length > 1 ? 's' : '');
+    $('avgMedidas').textContent = `${fmt(avgC,0)}×${fmt(avgL,0)}×${fmt(avgA,0)} cm`;
+    $('avgQtd').textContent = fmt(totalQtd,0);
+    $('avgPeso').textContent = fmt(totalPeso,2) + ' kg';
+
+    body.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if(!confirm('Excluir essa cubagem da lista?')) return;
+        const i = parseInt(btn.dataset.i);
+        volumes.splice(i, 1);
+        if(editingIndex === i) exitEditMode();
+        else if(editingIndex !== null && editingIndex > i) editingIndex--;
+        renderList();
+                vibrar(22);
+      });
+    });
+    body.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => enterEditMode(parseInt(btn.dataset.i)));
+    });
+    calcTotais();
+  }
+
+  function clearForm(){
+    els.comprimento.value = '';
+    els.largura.value = '';
+    els.altura.value = '';
+    els.qtvols.value = 1;
+    els.pesorealvol.value = '';
+    currentInputPreview();
+  }
+
+  function enterEditMode(i){
+    editingIndex = i;
+    const v = volumes[i];
+    els.comprimento.value = v.c;
+    els.largura.value = v.l;
+    els.altura.value = v.a;
+    els.qtvols.value = v.qt;
+    els.pesorealvol.value = v.pesoReal;
+    currentInputPreview();
+    $('editingBanner').classList.add('show');
+    $('btnAdd').textContent = '✓ Salvar alteração';
+    $('btnAdd').classList.add('editing');
+    $('btnCancelEdit').classList.add('show');
+    els.comprimento.focus();
+  }
+
+  function exitEditMode(){
+    editingIndex = null;
+    $('editingBanner').classList.remove('show');
+    $('btnAdd').textContent = '+ Adicionar volume à carga';
+    $('btnAdd').classList.remove('editing');
+    $('btnCancelEdit').classList.remove('show');
+  }
+
+  $('btnCancelEdit').addEventListener('click', () => {
+    exitEditMode();
+    clearForm();
+  });
+
+  $('btnAdd').addEventListener('click', () => {
+    const estavaEditando = editingIndex !== null;
+    const c = parseInputValue(els.comprimento.value), l = parseInputValue(els.largura.value), a = parseInputValue(els.altura.value);
+    const qt = parseInputValue(els.qtvols.value);
+    const pesoReal = parseInputValue(els.pesorealvol.value);
+    if(!validarVolumeDados(c, l, a, qt, pesoReal, estavaEditando ? 'volume em edição' : 'novo volume')){
+      if(!Number.isFinite(c) || c <= 0) els.comprimento.focus();
+      else if(!Number.isFinite(l) || l <= 0) els.largura.focus();
+      else if(!Number.isFinite(a) || a <= 0) els.altura.focus();
+      else if(!Number.isFinite(qt) || qt <= 0) els.qtvols.focus();
+      else els.pesorealvol.focus();
+      return;
+    }
+    const volUnit = (c/100) * (l/100) * (a/100);
+    const volTotal = volUnit * qt;
+    const item = { c, l, a, qt, volTotal, pesoReal };
+
+    if(editingIndex !== null){
+      volumes[editingIndex] = item;
+      exitEditMode();
+    } else {
+      volumes.push(item);
+    }
+
+    clearForm();
+    renderList();
+        vibrar(25);
+    mostrarToast(estavaEditando ? 'Volume atualizado.' : 'Volume adicionado à carga.');
+    els.comprimento.focus();
+  });
+
+  $('btnReset').addEventListener('click', () => {
+    if(volumes.length > 0 && !confirm('Limpar tudo e começar uma carga nova? Os volumes cadastrados serão apagados.')) return;
+    volumes = [];
+    editingIndex = null;
+    exitEditMode();
+    clearForm();
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+    document.querySelector('.chip[data-fator="167"]').classList.add('active');
+    fatorSelecionado = 167;
+    usandoCustom = false;
+    $('customWrap').classList.remove('show');
+    renderList();
+        vibrar(25);
+    mostrarToast('Carga limpa.');
+  });
+
+  // chips
+  document.querySelectorAll('.chip[data-fator]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+      chip.classList.add('active');
+      fatorSelecionado = parseFloat(chip.dataset.fator);
+      usandoCustom = false;
+      $('customWrap').classList.remove('show');
+      calcTotais();
+            vibrar(12);
+    });
+  });
+  $('chipCustom').addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active','custom-active'));
+    $('chipCustom').classList.add('custom-active');
+    usandoCustom = true;
+    $('customWrap').classList.add('show');
+    els.fatorCustom.focus();
+    calcTotais();
+        vibrar(12);
+  });
+  els.fatorCustom.addEventListener('input', () => {
+    calcTotais();
+      });
+
+  document.querySelector('.chip[data-fator="167"]').classList.add('active');
+
+  [els.comprimento, els.largura, els.altura].forEach(el => el.addEventListener('input', currentInputPreview));
+  [els.comprimento, els.largura, els.altura, els.qtvols, els.pesorealvol].forEach(el => limitarDigitos(el, 5));
+
+  // A renderização inicial acontece ao final da inicialização.
+
+  // ---------- Navegação entre projetos ----------
+  const viewManual = $('viewManual');
+  const viewRelatorio = $('viewRelatorio');
+  const navManual = $('navManual');
+  const navRelatorio = $('navRelatorio');
+
+  navManual.addEventListener('click', () => {
+    viewManual.style.display = 'block';
+    viewRelatorio.style.display = 'none';
+    navManual.classList.add('active');
+    navRelatorio.classList.remove('active');
+      });
+  navRelatorio.addEventListener('click', () => {
+    viewManual.style.display = 'none';
+    viewRelatorio.style.display = 'block';
+    navRelatorio.classList.add('active');
+    navManual.classList.remove('active');
+      });
+
+  // ---------- Relatório de Cubagens: carregar planilhas ----------
+  let ndRows = [];   let ndHeaders = [];    // Planilha de ND's
+  let cubRows = [];  let cubHeaders = [];   // Planilha de Cubagens Simples
+  let manualData = {};  // { [nd]: [{c,l,a,qt,pesoReal}, ...] } — cubagens digitadas manualmente
+  let manualEditing = null; // { nd, index } | null
+  let ultimosPares = []; // última busca feita, pra poder re-renderizar depois de editar dados manuais
+  const MANUAL_FATOR = 167;
+
+  let toastTimer = null;
+
+  function vibrar(ms = 18){
+    try{ if('vibrate' in navigator) navigator.vibrate(ms); }catch(_err){}
+  }
+
+  function mostrarToast(message, type = 'success'){
+    const toast = $('toast');
+    if(!toast) return;
+    toast.textContent = message;
+    toast.className = 'toast show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = 'toast'; }, 2600);
+  }
+
+  function esc(value){
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+    }[ch]));
+  }
+
+  function parseInputValue(value){
+    const raw = String(value ?? '').trim().replace(',', '.');
+    if(raw === '') return NaN;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function validarVolumeDados(c, l, a, qt, peso, contexto = 'volume'){
+    const campos = [
+      [c, 'comprimento (cm)'],
+      [l, 'largura (cm)'],
+      [a, 'altura (cm)'],
+      [qt, 'quantidade de volumes']
+    ];
+
+    for(const [valor, nome] of campos){
+      if(!Number.isFinite(valor)){
+        mostrarToast(`Informe o ${nome} do ${contexto}.`, 'error');
+        return false;
+      }
+      if(valor <= 0){
+        mostrarToast(`O ${nome} do ${contexto} deve ser maior que zero.`, 'error');
+        return false;
+      }
+    }
+
+    if(!Number.isFinite(peso)){
+      mostrarToast(`Informe o peso real do ${contexto}.`, 'error');
+      return false;
+    }
+    if(peso < 0){
+      mostrarToast(`O peso real do ${contexto} não pode ser negativo.`, 'error');
+      return false;
+    }
+    return true;
+  }
+
+  function validarPlanilha(headers, tipo){
+    const exigidas = tipo === 'nd' ? ['AWB', 'ND', 'Grupo'] : ['ND', 'Peso Real', 'Altura', 'Comprimento', 'Largura', 'Qt.Vols'];
+    return exigidas.filter(nome => !findColumnIn(headers, [nome]));
+  }
+
+  function loadSheet(file, onDone, statusEl, tipo){
+    statusEl.textContent = 'lendo arquivo...';
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try{
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        const headers = json.length ? Object.keys(json[0]) : [];
+        const faltantes = validarPlanilha(headers, tipo);
+        if(faltantes.length){
+          statusEl.textContent = `colunas ausentes: ${faltantes.join(', ')}`;
+          mostrarToast(`Planilha rejeitada. Faltam as colunas: ${faltantes.join(', ')}.`, 'error');
+          return;
+        }
+        onDone(json, headers);
+        statusEl.textContent = `${file.name} — ${json.length} linhas carregadas`;
+                mostrarToast(`${file.name} carregada com sucesso.`);
+      } catch(err){
+        statusEl.textContent = 'erro ao ler o arquivo';
+        alert('Não consegui ler essa planilha. Confira se é um .xlsx válido.\n\n' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Tenta buscar a planilha de uma URL fixa (pasta "data/" do próprio site).
+  // Se não achar (404, ou rodando localmente sem servidor), não faz nada —
+  // o botão de carregar manualmente continua disponível como alternativa.
+  async function tentarCarregarAutomatico(url, onDone, statusEl, nomeExibicao, tipo){
+    try{
+      const resp = await fetch(url);
+      if(!resp.ok) throw new Error('arquivo não encontrado em ' + url);
+      const buffer = await resp.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const headers = json.length ? Object.keys(json[0]) : [];
+      const faltantes = validarPlanilha(headers, tipo);
+      if(faltantes.length) throw new Error('colunas ausentes: ' + faltantes.join(', '));
+      onDone(json, headers);
+      statusEl.textContent = `${nomeExibicao} — ${json.length} linhas (carregado automaticamente)`;
+          } catch(err){
+      statusEl.textContent = 'não encontrado automaticamente — carregue manualmente abaixo';
+    }
+  }
+
+  $('btnLoadFile').addEventListener('click', () => $('ndFileInput').click());
+  $('ndFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    loadSheet(file, (json, headers) => { ndRows = json; ndHeaders = headers; }, $('ndFileStatus'), 'nd');
+  });
+
+  $('btnLoadCubFile').addEventListener('click', () => $('cubFileInput').click());
+  $('cubFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    loadSheet(file, (json, headers) => { cubRows = json; cubHeaders = headers; }, $('cubFileStatus'), 'cub');
+  });
+
+  // Ao abrir a página, tenta puxar as planilhas direto de data/ automaticamente
+  tentarCarregarAutomatico('data/planilha-nds.xlsx', (json, headers) => { ndRows = json; ndHeaders = headers; }, $('ndFileStatus'), 'planilha-nds.xlsx', 'nd');
+  tentarCarregarAutomatico('data/cubagens-simples.xlsx', (json, headers) => { cubRows = json; cubHeaders = headers; }, $('cubFileStatus'), 'cubagens-simples.xlsx', 'cub');
+
+  // ---------- Relatório de Cubagens: pesquisar ----------
+  function findColumnIn(headers, names){
+    // acha o nome exato da coluna na planilha carregada, tolerando variações de acento/maiúscula
+    const norm = s => String(s).toLowerCase().trim();
+    for(const name of names){
+      const found = headers.find(h => norm(h) === norm(name));
+      if(found) return found;
+    }
+    return null;
+  }
+
+  function toNum(v){
+    if(v === '' || v === null || v === undefined) return NaN;
+    const n = parseFloat(String(v).replace(',', '.'));
+    return isNaN(n) ? NaN : n;
+  }
+
+  function media(arr){
+    const valid = arr.filter(v => !isNaN(v));
+    if(valid.length === 0) return NaN;
+    return valid.reduce((a,b) => a+b, 0) / valid.length;
+  }
+  function soma(arr){
+    return arr.filter(v => !isNaN(v)).reduce((a,b) => a+b, 0);
+  }
+
+  // Calcula as cubagens (linhas individuais + médias + totais) de uma ND na planilha de Cubagens Simples
+  function calcularCubagensDaNd(nd){
+    const colNd = findColumnIn(cubHeaders, ['ND']);
+    const colPesoReal = findColumnIn(cubHeaders, ['Peso Real']);
+    const colAltura = findColumnIn(cubHeaders, ['Altura']);
+    const colComprimento = findColumnIn(cubHeaders, ['Comprimento']);
+    const colLargura = findColumnIn(cubHeaders, ['Largura']);
+    const colQtVols = findColumnIn(cubHeaders, ['Qt.Vols']);
+    const colPadCub = findColumnIn(cubHeaders, ['Pad.Cub.', 'Pad.Cub', 'Pad Cub']);
+
+    if(!colNd || !colPesoReal || !colAltura || !colComprimento || !colLargura || !colQtVols){
+      return { erro: 'colunas', linhas: [] };
+    }
+
+    const linhas = cubRows.filter(r => String(r[colNd]).trim() === String(nd).trim());
+
+    const alturas = linhas.map(r => toNum(r[colAltura]));
+    const comprimentos = linhas.map(r => toNum(r[colComprimento]));
+    const larguras = linhas.map(r => toNum(r[colLargura]));
+    const pesos = linhas.map(r => toNum(r[colPesoReal]));
+    const qtds = linhas.map(r => toNum(r[colQtVols]));
+
+    const avgA = media(alturas), avgC = media(comprimentos), avgL = media(larguras);
+    const totalPeso = soma(pesos);
+    const totalQtd = soma(qtds);
+
+    let padCubRaw = colPadCub ? linhas.map(r => r[colPadCub]).find(v => v !== '' && v !== null && v !== undefined) : null;
+    const fator = padCubRaw !== undefined && padCubRaw !== null ? toNum(padCubRaw) : NaN;
+
+    const volumeTotal = linhas.reduce((sum, r) => {
+      const a = toNum(r[colAltura]), c = toNum(r[colComprimento]), l = toNum(r[colLargura]), q = toNum(r[colQtVols]);
+      if([a,c,l,q].some(isNaN)) return sum;
+      return sum + (a/100)*(c/100)*(l/100)*q;
+    }, 0);
+
+    const linhasNormalizadas = linhas.map(r => ({
+      c: toNum(r[colComprimento]), l: toNum(r[colLargura]), a: toNum(r[colAltura]),
+      qt: toNum(r[colQtVols]), pesoReal: toNum(r[colPesoReal])
+    }));
+
+    const pesoCubado = isNaN(fator) ? NaN : volumeTotal * fator;
+
+    // considera "sem cubagens informadas" quando não há linha, ou quando tudo que existe é zero/vazio
+    // "vazio" = não há como calcular cubagem real: sem linha, ou volume calculado zerado
+    // (medidas 0x0x0, por exemplo) — mesmo que qtd ou peso tenham algum valor lançado por engano
+    let vazio = linhas.length === 0 || volumeTotal === 0;
+
+    const ndKey = String(nd).trim();
+    const manualList = manualData[ndKey] || [];
+
+    if(vazio && manualList.length > 0){
+      const mAvgA = media(manualList.map(v => v.a));
+      const mAvgC = media(manualList.map(v => v.c));
+      const mAvgL = media(manualList.map(v => v.l));
+      const mTotalPeso = soma(manualList.map(v => v.pesoReal));
+      const mTotalQtd = soma(manualList.map(v => v.qt));
+      const mVolumeTotal = manualList.reduce((sum, v) => sum + (v.a/100)*(v.c/100)*(v.l/100)*v.qt, 0);
+      const mPesoCubado = mVolumeTotal * MANUAL_FATOR;
+      return { erro:null, linhas:[], linhasNormalizadas: manualList.map(v => ({c:v.c,l:v.l,a:v.a,qt:v.qt,pesoReal:v.pesoReal})),
+               manual:true, manualList, avgA:mAvgA, avgC:mAvgC, avgL:mAvgL,
+               totalPeso:mTotalPeso, totalQtd:mTotalQtd, fator:MANUAL_FATOR, volumeTotal:mVolumeTotal,
+               pesoCubado:mPesoCubado, vazio:false,
+               colAltura, colComprimento, colLargura, colPesoReal, colQtVols };
+    }
+
+    return { erro:null, linhas, linhasNormalizadas, manual:false, manualList, avgA, avgC, avgL, totalPeso, totalQtd, fator, volumeTotal, pesoCubado, vazio,
+             colAltura, colComprimento, colLargura, colPesoReal, colQtVols };
+  }
+
+  function manualListHtml(nd, manualList){
+    const rows = manualList.map((v, i) => `
+      <tr>
+        <td>${fmt(v.c,0)}×${fmt(v.l,0)}×${fmt(v.a,0)} cm</td>
+        <td class="num">${fmt(v.qt,0)}</td>
+        <td class="num">${fmt(v.pesoReal,2)} kg</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn btn-manual-edit" data-nd="${esc(nd)}" data-index="${i}" title="Editar" aria-label="Editar cubagem">✎</button>
+            <button class="icon-btn del-btn btn-manual-del" data-nd="${esc(nd)}" data-index="${i}" title="Excluir" aria-label="Excluir cubagem">✕</button>
+          </div>
+        </td>
+      </tr>`).join('');
+    return `<table><thead><tr><th>Dimensões</th><th>Qtd</th><th>Peso real</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  function renderNdItem(grupo, nd){
+    const r = calcularCubagensDaNd(nd);
+
+    if(r.erro === 'colunas'){
+      return { html: `<div class="result-item"><div style="padding:12px 0;"><span class="rvalue">${esc(grupo)} - ${esc(nd)}</span><br><span class="rempty">Planilha de Cubagens Simples sem as colunas esperadas.</span></div></div>`, dado: null };
+    }
+
+    if(r.vazio){
+      return { html: `<div class="result-item">
+        <div style="padding:12px 0;">
+          <span class="rvalue">${esc(grupo)} - ${esc(nd)}</span><br>
+          <span class="rwarning">Não há cubagens informadas para essa ND</span>
+        </div>
+      </div>`, dado: null };
+    }
+
+    if(r.manual){
+      const html = `<details class="result-item">
+        <summary>
+          <span class="rvalue">${esc(grupo)} - ${esc(nd)}</span>
+          <span class="manual-badge">dados inseridos manualmente</span>
+          <span class="rstats">
+            <span>Medida média: <b>${isNaN(r.avgC)?'—':fmt(r.avgC,0)}×${isNaN(r.avgL)?'—':fmt(r.avgL,0)}×${isNaN(r.avgA)?'—':fmt(r.avgA,0)} cm</b></span>
+            <span>Peso: <b>${fmt(r.totalPeso,2)} kg</b></span>
+            <span>Volumes: <b>${fmt(r.totalQtd,0)}</b></span>
+          </span>
+        </summary>
+        <div class="result-detail">
+          ${manualListHtml(nd, r.manualList)}
+        </div>
+      </details>`;
+      return { html, dado: r };
+    }
+
+    const linhasHtml = r.linhas.map(l => `
+      <tr>
+        <td>${fmt(toNum(l[r.colComprimento]),0)}×${fmt(toNum(l[r.colLargura]),0)}×${fmt(toNum(l[r.colAltura]),0)} cm</td>
+        <td class="num">${fmt(toNum(l[r.colQtVols]),0)}</td>
+        <td class="num">${fmt(toNum(l[r.colPesoReal]),2)} kg</td>
+      </tr>`).join('');
+
+    const html = `<details class="result-item">
+      <summary>
+        <span class="rvalue">${esc(grupo)} - ${esc(nd)}</span>
+        <span class="rstats">
+          <span>Medida média: <b>${isNaN(r.avgC)?'—':fmt(r.avgC,0)}×${isNaN(r.avgL)?'—':fmt(r.avgL,0)}×${isNaN(r.avgA)?'—':fmt(r.avgA,0)} cm</b></span>
+          <span>Peso: <b>${fmt(r.totalPeso,2)} kg</b></span>
+          <span>Volumes: <b>${fmt(r.totalQtd,0)}</b></span>
+        </span>
+      </summary>
+      <div class="result-detail">
+        <table><thead><tr><th>Dimensões</th><th>Qtd</th><th>Peso real</th></tr></thead>
+        <tbody>${linhasHtml}</tbody></table>
+      </div>
+    </details>`;
+
+    return { html, dado: r };
+  }
+
+  function renderTotais(dados){
+    const totalVol = soma(dados.map(d => d.volumeTotal));
+    const totalPesoReal = soma(dados.map(d => d.totalPeso));
+    const totalPesoCubado = soma(dados.map(d => isNaN(d.pesoCubado) ? 0 : d.pesoCubado));
+    const maior = Math.max(totalPesoCubado, totalPesoReal);
+
+    $('relVolTotal').textContent = fmt(totalVol,2) + ' m³';
+    $('relPesoRealOut').textContent = fmt(totalPesoReal,2) + ' kg';
+    $('relPesoCubado').textContent = fmt(totalPesoCubado,2) + ' kg';
+    $('relWinnerValue').innerHTML = fmt(maior,2) + ' <span>kg</span>';
+    $('relWinnerNote').textContent = totalPesoCubado >= totalPesoReal
+      ? 'O peso cubado é maior que o real.'
+      : 'O peso real é maior que o cubado.';
+    $('resultTotalCard').style.display = 'block';
+  }
+
+  // Média considerando TODAS as cubagens (linha a linha) de TODAS as NDs encontradas juntas
+  function renderMediaGeralRel(dados){
+    const allLinhas = dados.flatMap(d => d.linhasNormalizadas);
+    if(allLinhas.length === 0){ resetMediaGeralRel(); return; }
+
+    const avgC = media(allLinhas.map(l => l.c));
+    const avgL = media(allLinhas.map(l => l.l));
+    const avgA = media(allLinhas.map(l => l.a));
+    const totalPeso = soma(allLinhas.map(l => l.pesoReal));
+    const totalQtd = soma(allLinhas.map(l => l.qt));
+    const totalVol = soma(dados.map(d => d.volumeTotal));
+
+    $('avgHintRel').textContent = allLinhas.length + ' cubagem' + (allLinhas.length > 1 ? 's' : '') + ' em ' + dados.length + ' ND' + (dados.length > 1 ? 's' : '');
+    $('avgMedidasRel').textContent = `${isNaN(avgC)?'—':fmt(avgC,0)}×${isNaN(avgL)?'—':fmt(avgL,0)}×${isNaN(avgA)?'—':fmt(avgA,0)} cm`;
+    $('avgQtdRel').textContent = fmt(totalQtd,0);
+    $('avgPesoRel').textContent = fmt(totalPeso,2) + ' kg';
+    $('avgVolRel').textContent = fmt(totalVol,2) + ' m³';
+  }
+
+  function resetMediaGeralRel(){
+    $('avgHintRel').textContent = 'aguardando busca';
+    $('avgMedidasRel').textContent = '—';
+    $('avgQtdRel').textContent = '—';
+    $('avgPesoRel').textContent = '—';
+    $('avgVolRel').textContent = '—';
+  }
+
+  function renderResultados(pares){
+    const resultBody = $('resultBody');
+    const resultCount = $('resultCount');
+
+    ultimosPares = pares;
+    resultCount.textContent = '(' + pares.length + ')';
+
+    const dadosValidos = [];
+    resultBody.innerHTML = pares.map(p => {
+      const item = renderNdItem(p.grupo, p.nd);
+      if(item.dado) dadosValidos.push(item.dado);
+      return item.html;
+    }).join('');
+
+    if(dadosValidos.length > 0){
+      renderTotais(dadosValidos);
+      renderMediaGeralRel(dadosValidos);
+    } else {
+      $('resultTotalCard').style.display = 'none';
+      resetMediaGeralRel();
+    }
+    // O relatório pode ser compartilhado mesmo quando existem NDs pendentes.
+    $('btnShareRelatorio').style.display = pares.length > 0 ? 'block' : 'none';
+
+    ligarHandlersManuais();
+    refreshManualCard();
+  }
+
+  function ligarHandlersManuais(){
+    // apenas os botões de editar/excluir que aparecem dentro da lista de resultados (Grupo - ND)
+    const resultBody = $('resultBody');
+
+    resultBody.querySelectorAll('.btn-manual-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const nd = String(btn.dataset.nd).trim();
+        const index = parseInt(btn.dataset.index);
+        $('manualNdSelect').value = nd;
+        manualEditing = { nd, index };
+        refreshManualListForSelectedNd();
+        $('manualC').focus();
+      });
+    });
+
+    resultBody.querySelectorAll('.btn-manual-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if(!confirm('Excluir essa cubagem da lista?')) return;
+        const nd = String(btn.dataset.nd).trim();
+        const index = parseInt(btn.dataset.index);
+        manualData[nd].splice(index, 1);
+        if(manualData[nd].length === 0) delete manualData[nd];
+                if(manualEditing && manualEditing.nd === nd) manualEditing = null;
+        vibrar(22);
+        renderResultados(ultimosPares);
+        updateManualSelectColor();
+      });
+    });
+
+  }
+
+  // ---------- Card central "Adicionar cubagem manual" ----------
+  function ndsElegiveisParaManual(){
+    // NDs da busca atual que não vieram prontas da planilha (vazias ou já com dado manual)
+    return ultimosPares.filter(p => {
+      const r = calcularCubagensDaNd(p.nd);
+      return r.erro !== 'colunas' && (r.vazio || r.manual);
+    });
+  }
+
+  function refreshManualCard(){
+    const elegiveis = ndsElegiveisParaManual();
+    const card = $('manualCard');
+    const select = $('manualNdSelect');
+
+    if(elegiveis.length === 0){
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+
+    const valorAtual = select.value;
+    select.innerHTML = elegiveis.map(p => {
+      const ndKey = String(p.nd).trim();
+      const preenchida = Array.isArray(manualData[ndKey]) && manualData[ndKey].length > 0;
+      const marca = preenchida ? '✓ ' : '';
+      return `<option class="${preenchida ? 'manual-filled' : ''}" value="${esc(p.nd)}">${marca}${esc(p.grupo)} - ${esc(p.nd)}</option>`;
+    }).join('');
+    const aindaExiste = elegiveis.some(p => String(p.nd) === valorAtual);
+    if(aindaExiste) select.value = valorAtual;
+
+    refreshManualListForSelectedNd();
+    updateManualSelectColor();
+  }
+
+  function updateManualSelectColor(){
+    const select = $('manualNdSelect');
+    const ndKey = String(select.value).trim();
+    const preenchida = Array.isArray(manualData[ndKey]) && manualData[ndKey].length > 0;
+    if(preenchida) select.classList.add('is-filled');
+    else select.classList.remove('is-filled');
+  }
+
+  function limparFormManual(){
+    $('manualC').value = '';
+    $('manualL').value = '';
+    $('manualA').value = '';
+    $('manualQt').value = 1;
+    $('manualPeso').value = '';
+    $('btnManualSave').textContent = '+ Adicionar volume à ND';
+    $('btnManualCancel').classList.remove('show');
+  }
+
+  function refreshManualListForSelectedNd(){
+    const nd = String($('manualNdSelect').value).trim();
+    const listaDiv = $('manualListForNd');
+    const lista = manualData[nd] || [];
+
+    if(lista.length === 0){
+      listaDiv.innerHTML = '<div class="manual-empty-msg">Nenhum volume lançado ainda pra essa ND.</div>';
+    } else {
+      listaDiv.innerHTML = manualListHtml(nd, lista);
+      listaDiv.querySelectorAll('.btn-manual-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+          manualEditing = { nd, index: parseInt(btn.dataset.index) };
+          refreshManualListForSelectedNd();
+          $('manualC').focus();
+        });
+      });
+      listaDiv.querySelectorAll('.btn-manual-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if(!confirm('Excluir essa cubagem da lista?')) return;
+          const index = parseInt(btn.dataset.index);
+          manualData[nd].splice(index, 1);
+          if(manualData[nd].length === 0) delete manualData[nd];
+          if(manualEditing && manualEditing.nd === nd) manualEditing = null;
+                    vibrar(22);
+          renderResultados(ultimosPares);
+          updateManualSelectColor();
+        });
+      });
+    }
+
+    if(manualEditing && manualEditing.nd === nd && manualData[nd] && manualData[nd][manualEditing.index]){
+      const item = manualData[nd][manualEditing.index];
+      $('manualC').value = item.c;
+      $('manualL').value = item.l;
+      $('manualA').value = item.a;
+      $('manualQt').value = item.qt;
+      $('manualPeso').value = item.pesoReal;
+      $('btnManualSave').textContent = '✓ Salvar alteração';
+      $('btnManualCancel').classList.add('show');
+    } else {
+      limparFormManual();
+    }
+  }
+
+  [$('manualC'), $('manualL'), $('manualA'), $('manualQt'), $('manualPeso')].forEach(el => limitarDigitos(el, 5));
+
+  $('manualNdSelect').addEventListener('change', () => {
+    manualEditing = null;
+    refreshManualListForSelectedNd();
+    updateManualSelectColor();
+  });
+
+  $('btnManualCancel').addEventListener('click', () => {
+    manualEditing = null;
+    limparFormManual();
+  });
+
+  $('btnManualSave').addEventListener('click', () => {
+    const nd = String($('manualNdSelect').value).trim();
+    if(!nd) return;
+
+    const c = parseInputValue($('manualC').value);
+    const l = parseInputValue($('manualL').value);
+    const a = parseInputValue($('manualA').value);
+    const qt = parseInputValue($('manualQt').value);
+    const pesoReal = parseInputValue($('manualPeso').value);
+
+    if(!validarVolumeDados(c, l, a, qt, pesoReal, 'volume manual')){
+      if(!Number.isFinite(c) || c <= 0) $('manualC').focus();
+      else if(!Number.isFinite(l) || l <= 0) $('manualL').focus();
+      else if(!Number.isFinite(a) || a <= 0) $('manualA').focus();
+      else if(!Number.isFinite(qt) || qt <= 0) $('manualQt').focus();
+      else $('manualPeso').focus();
+      return;
+    }
+
+    if(!manualData[nd]) manualData[nd] = [];
+    const item = { c, l, a, qt, pesoReal: isNaN(pesoReal) ? 0 : pesoReal };
+
+    if(manualEditing && manualEditing.nd === nd){
+      manualData[nd][manualEditing.index] = item;
+    } else {
+      manualData[nd].push(item);
+    }
+    manualEditing = null;
+        vibrar(25);
+    mostrarToast('Cubagem manual salva.');
+    renderResultados(ultimosPares);
+    updateManualSelectColor();
+  });
+
+  function mostrarMensagemBusca(mensagem){
+    const feedback = $('searchFeedback');
+    feedback.textContent = mensagem || '';
+    feedback.style.display = mensagem ? 'block' : 'none';
+  }
+
+  $('btnBuscar').addEventListener('click', () => {
+    const resultCard = $('resultCard');
+    const resultTotalCard = $('resultTotalCard');
+    const resultEmpty = $('resultEmpty');
+
+    resultTotalCard.style.display = 'none';
+    resetMediaGeralRel();
+    manualEditing = null;
+    ultimosPares = [];
+    $('manualCard').style.display = 'none';
+    $('btnShareRelatorio').style.display = 'none';
+    mostrarMensagemBusca('');
+
+    if(cubRows.length === 0){
+      resultCard.style.display = 'none';
+      resultEmpty.style.display = 'block';
+      resultEmpty.textContent = 'Carregue a Planilha de Cubagens Simples primeiro, no card acima.';
+      return;
+    }
+
+    const awbBusca = $('buscaAwb').value.trim();
+    const ndBusca = $('buscaNd').value.trim();
+
+    if(!awbBusca && !ndBusca){
+      resultCard.style.display = 'none';
+      resultEmpty.style.display = 'none';
+      mostrarMensagemBusca('Digite um AWB/RCC ou um ND para pesquisar.');
+      return;
+    }
+
+    let pares = []; // [{grupo, nd}]
+
+    if(awbBusca){
+      if(ndRows.length === 0){
+        resultCard.style.display = 'none';
+        resultEmpty.style.display = 'block';
+        resultEmpty.textContent = 'Carregue a Planilha de ND\'s primeiro, no card acima (necessária pra buscar por AWB/RCC).';
+        return;
+      }
+      const colAwb = findColumnIn(ndHeaders, ['AWB']);
+      const colNdNd = findColumnIn(ndHeaders, ['ND']);
+      const colGrupoNd = findColumnIn(ndHeaders, ['Grupo']);
+      if(!colAwb || !colNdNd || !colGrupoNd){
+        resultCard.style.display = 'none';
+        resultEmpty.style.display = 'block';
+        resultEmpty.textContent = 'A Planilha de ND\'s não tem as colunas esperadas (AWB, ND, Grupo).';
+        return;
+      }
+      pares = ndRows.filter(r => String(r[colAwb]).trim() === awbBusca)
+                     .map(r => ({ grupo: r[colGrupoNd], nd: r[colNdNd] }));
+      if(pares.length === 0){
+        resultCard.style.display = 'none';
+        resultEmpty.style.display = 'none';
+        mostrarMensagemBusca('Nenhum AWB/RCC encontrado para essa busca.');
+        return;
+      }
+    } else {
+      const colNdCub = findColumnIn(cubHeaders, ['ND']);
+      const colGrpCub = findColumnIn(cubHeaders, ['Grp', 'Grupo']);
+      if(!colNdCub){
+        resultCard.style.display = 'none';
+        resultEmpty.style.display = 'block';
+        resultEmpty.textContent = 'A Planilha de Cubagens Simples não tem a coluna ND.';
+        return;
+      }
+
+      // Quando a busca é feita somente pela ND, o Grupo deve vir da planilha de NDs.
+      // A planilha de cubagens é usada como fallback caso ela também contenha essa coluna.
+      const colNdPlanilha = ndRows.length > 0 ? findColumnIn(ndHeaders, ['ND']) : null;
+      const colGrupoPlanilha = ndRows.length > 0 ? findColumnIn(ndHeaders, ['Grupo']) : null;
+      const vinculosNd = colNdPlanilha && colGrupoPlanilha
+        ? ndRows.filter(r => String(r[colNdPlanilha]).trim() === ndBusca)
+        : [];
+      const linhasNd = cubRows.filter(r => String(r[colNdCub]).trim() === ndBusca);
+
+      if(vinculosNd.length === 0 && linhasNd.length === 0){
+        resultCard.style.display = 'none';
+        resultEmpty.style.display = 'none';
+        mostrarMensagemBusca('Nenhuma ND encontrada para essa busca.');
+        return;
+      }
+
+      const grupoEncontrado = vinculosNd.length > 0
+        ? String(vinculosNd[0][colGrupoPlanilha]).trim()
+        : (linhasNd.length > 0 && colGrpCub ? String(linhasNd[0][colGrpCub]).trim() : '—');
+
+      pares = [{ grupo: grupoEncontrado || '—', nd: ndBusca }];
+    }
+
+    if(pares.length === 0){
+      resultCard.style.display = 'none';
+      resultEmpty.style.display = 'block';
+      resultEmpty.textContent = 'Nenhuma ND encontrada para essa busca.';
+      return;
+    }
+
+    resultEmpty.style.display = 'none';
+    mostrarMensagemBusca('');
+    resultCard.style.display = 'block';
+    renderResultados(pares);
+  });
+
+
+
+  function textoResumoManual(){
+    const totalVol = volumes.reduce((s,v) => s + v.volTotal, 0);
+    const totalPeso = volumes.reduce((s,v) => s + v.pesoReal, 0);
+    const fator = fatorAtual();
+    const cubado = fator > 0 ? totalVol * fator : 0;
+    const maior = Math.max(cubado, totalPeso);
+    const linhas = volumes.map((v,i) => `${i + 1}. Peso: ${fmt(v.pesoReal,2)} kg | Med: ${fmt(v.c,0)}×${fmt(v.l,0)}×${fmt(v.a,0)} cm | Qtd: ${fmt(v.qt,0)}`).join('\n');
+    return `CargoCalc — Cubagem\nData: ${new Date().toLocaleString('pt-BR')}\n\nVolumes (${volumes.length}):\n${linhas || 'Nenhum volume cadastrado.'}\n\nMetro Cúbico: ${fmt(totalVol,2)} m³\nPeso real: ${fmt(totalPeso,2)} kg\nPeso cubado: ${fmt(cubado,2)} kg\nFator: ${fator > 0 ? fmt(fator,0) : 'não informado'} kg/m³\nPeso considerado no frete: ${fmt(maior,2)} kg`;
+  }
+
+  function dadosRelatorioAtuais(){
+    return ultimosPares.map(p => ({ p, r: calcularCubagensDaNd(p.nd) }));
+  }
+
+  function textoResumoRelatorio(){
+    const itens = dadosRelatorioAtuais();
+    const validos = itens.filter(item => item.r && !item.r.erro && !item.r.vazio);
+    const pendentes = itens.filter(item => !item.r || item.r.erro || item.r.vazio);
+    const totalVol = soma(validos.map(item => item.r.volumeTotal));
+    const totalPeso = soma(validos.map(item => item.r.totalPeso));
+    const totalCubado = soma(validos.map(item => Number.isNaN(item.r.pesoCubado) ? 0 : item.r.pesoCubado));
+
+    const volumesDetalhados = validos.flatMap(item => item.r.linhasNormalizadas.map(volume => ({
+      nd: item.p.nd,
+      c: volume.c,
+      l: volume.l,
+      a: volume.a,
+      qt: volume.qt,
+      pesoReal: volume.pesoReal
+    })));
+
+    const linhas = volumesDetalhados.map((volume, index) =>
+      `${index + 1}. ND ${volume.nd} — Peso: ${fmt(volume.pesoReal,2)} kg | Med: ${fmt(volume.c,0)}×${fmt(volume.l,0)}×${fmt(volume.a,0)} cm | Qtd: ${fmt(volume.qt,0)}`
+    ).join('\n');
+
+    const pendencia = pendentes.length > 0
+      ? `NDs pendentes: ${pendentes.length} de ${itens.length}.`
+      : 'Todas as NDs possuem cubagem informada.';
+
+    return `CargoCalc — Cubagem\nData: ${new Date().toLocaleString('pt-BR')}\n\nVolumes (${volumesDetalhados.length}):\n${linhas || 'Nenhum volume cadastrado.'}\n\n${pendencia}\n\nMetro Cúbico: ${fmt(totalVol,2)} m³\nPeso real: ${fmt(totalPeso,2)} kg\nPeso cubado: ${fmt(totalCubado,2)} kg\nPeso considerado no frete: ${fmt(Math.max(totalPeso, totalCubado),2)} kg`;
+  }
+
+  async function compartilharResumo(texto, titulo){
+    try{
+      if(navigator.share){
+        await navigator.share({ title: titulo, text: texto });
+        mostrarToast('Resumo compartilhado.');
+      }else if(navigator.clipboard){
+        await navigator.clipboard.writeText(texto);
+        mostrarToast('Resumo copiado. Cole no WhatsApp ou e-mail.');
+      }else{
+        window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank', 'noopener');
+        mostrarToast('Abrindo o compartilhamento do WhatsApp.');
+      }
+      vibrar(20);
+    }catch(err){
+      if(err && err.name === 'AbortError') return;
+      mostrarToast('Não foi possível compartilhar. O resumo foi copiado?', 'error');
+    }
+  }
+
+  $('btnShareManual').addEventListener('click', () => compartilharResumo(textoResumoManual(), 'Cubagem da carga'));
+  $('btnShareRelatorio').addEventListener('click', () => {
+    const pendentes = dadosRelatorioAtuais().filter(item => !item.r || item.r.erro || item.r.vazio);
+    if(pendentes.length > 0){
+      const mensagem = pendentes.length === 1
+        ? 'Atenção: Existe 1 ND com medida de cubagem pendente. Preencha todas as medidas para seguir com o compartilhamento.'
+        : `Atenção: Existem ${pendentes.length} NDs com medidas de cubagem pendentes. Preencha todas as medidas para seguir com o compartilhamento.`;
+      alert(mensagem);
+      mostrarToast('Preencha todas as NDs antes de compartilhar o relatório.', 'error');
+      vibrar([40, 50, 40]);
+      return;
+    }
+    compartilharResumo(textoResumoRelatorio(), 'Relatório de cubagens');
+  });
+
+  // ---------- Relatório de Cubagens: limpar ----------
+  $('btnClearSheets').addEventListener('click', () => {
+    if(!confirm('Isso vai apagar as planilhas carregadas E os dados manuais da memória. Você vai precisar carregar de novo pra pesquisar. Continuar?')) return;
+    ndRows = []; ndHeaders = [];
+    cubRows = []; cubHeaders = [];
+    manualData = {}; manualEditing = null;
+        vibrar(25);
+    $('ndFileStatus').textContent = 'nenhum arquivo carregado';
+    $('cubFileStatus').textContent = 'nenhum arquivo carregado';
+    $('ndFileInput').value = '';
+    $('cubFileInput').value = '';
+    $('btnClearBusca').click();
+  });
+
+  $('btnClearBusca').addEventListener('click', () => {
+    $('buscaAwb').value = '';
+    $('buscaNd').value = '';
+    $('resultCard').style.display = 'none';
+    $('resultTotalCard').style.display = 'none';
+    $('btnShareRelatorio').style.display = 'none';
+    $('resultBody').innerHTML = '';
+    $('resultCount').textContent = '';
+    $('resultEmpty').style.display = 'block';
+    $('resultEmpty').textContent = 'Carregue as planilhas e faça uma busca para ver os resultados aqui.';
+    mostrarMensagemBusca('');
+    resetMediaGeralRel();
+    $('manualCard').style.display = 'none';
+    manualEditing = null;
+    ultimosPares = [];
+      });
+
+  // Enter avança entre os campos numéricos, mantendo o fluxo rápido no celular.
+  const fluxoCampos = [els.comprimento, els.largura, els.altura, els.qtvols, els.pesorealvol];
+  fluxoCampos.forEach((el, index) => el.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const proximo = fluxoCampos[index + 1];
+      if(proximo) proximo.focus();
+      else $('btnAdd').click();
+    }
+  }));
+
+  [$('manualC'), $('manualL'), $('manualA'), $('manualQt'), $('manualPeso')].forEach((el, index, arr) => el.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      const proximo = arr[index + 1];
+      if(proximo) proximo.focus();
+      else $('btnManualSave').click();
+    }
+  }));
+
+    currentInputPreview();
+  renderList();
+</script>
+</body>
+</html>
