@@ -1,4 +1,4 @@
-# CargoCalc Suite — Logística e Cubagem de Cargas
+# CargoCalc Suite - Logística e Cubagem de Cargas
 
 Conjunto de ferramentas web de alta performance desenvolvido para otimizar operações logísticas de cálculo de cubagem, comparação de peso real versus peso cubado, cruzamento de notas fiscais (NDs) com AWBs via planilhas Excel e geração inteligente de dimensões.
 
